@@ -1,0 +1,77 @@
+---
+title: "Project_PracticalML"
+author: "Sanjeev Kumar"
+date: "Sunday, March 22, 2015"
+output: html_document
+---
+Devices such as Jawbone Up, Nike FuelBand, and Fitbit enable us to collect data about personal physical activities in realtime fashion.  In this project, goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. 
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set that can use any of the other variables to predict with.
+
+#Loading data
+```{r}
+#packages required for analysis
+require(caret)
+require(ggplot2)
+require(corrplot)
+require(randomForest)
+#Uploading data in R
+rm(list = ls())
+setwd("C:/Users/Sanjeev/PracticalML")
+PML = read.csv("pml-training.csv", na.strings = c("NA", "")) #adding NA for missing value
+PML_test <- read.csv("pml-testing.csv", na.strings = c("NA", "")) #adding NA for missing value
+# Understanding data variable for future manipulations
+sapply(PML,class)
+```
+
+#Data manipulation
+```{r}
+#Removing variables not important
+PML_1 <- PML[, -(grep("timestamp|X|user_name|num_window|new_window", names(PML)))] #removed variable 1 to 7 that was not required for analysis
+PML_test1 <- PML_test[, -(grep("timestamp|X|user_name|num_window|new_window", names(PML_test)))]
+#Identifying NAs from dataset for removing it later
+NAs <- apply(PML_1, 2, function(x) {
+    sum(is.na(x))})
+PML_final <- PML_1[, which(NAs == 0)]
+PML_test_final <- PML_test1[, which(NAs == 0)]
+head(PML_final)#No NA in the observation
+#Splitting PML data set for training and test
+inTrain <- createDataPartition(PML_final$classe, p = 0.6, list = FALSE)
+training <- PML_final[inTrain, ]
+test <- PML_final[-inTrain, ]
+```
+#Building up and testing the model
+```{r}
+set.seed(33833)
+rf <- train(training$classe~.,method="rf",data=training, prof = TRUE,
+            trControl = trainControl(method = "boot", number = 5, allowParallel = TRUE)) #randomForest
+print(rf)
+vi1 <- varImp(rf,type=2) # importance of variable in the model
+test$rightprediction <- predict(rf, test) == test$classe
+summary(test$rightprediction)
+table(predict(rf, test), test$classe)
+
+CrossValidated<- postResample((predict(rf, test)), test$classe)
+CrossValidated
+```
+
+#Trying the ConfussionMatrix
+
+```{r}
+set.seed(33833)
+CrossValidatedError <- confusionMatrix((predict(rf, test)), test$classe)
+CrossValidatedError
+```
+#PartB: The 20 cases to predict
+```{r}
+Model.Prediction2 <- predict(rf, PML_test_final)
+Model.Prediction2
+```
